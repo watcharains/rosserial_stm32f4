@@ -1,38 +1,53 @@
 #!/usr/bin/env python
-#######################################################################################################################
+
+#####################################################################
 # Software License Agreement (BSD License)
-#   Original Copyright: Copyright (c) 2013, Willow Garage, Inc.
-#     https://github.com/ros-drivers/rosserial/blob/melodic-devel/rosserial_mbed/src/rosserial_mbed/make_libraries.py
 #
-#   Modifications by:
-#     - Kenta Yonekura (a.k.a. yoneken):
-#         https://github.com/yoneken/rosserial_stm32/blob/master/src/rosserial_stm32/make_libraries.py
+# Copyright (c) 2018, Kenta Yonekura (a.k.a. yoneken), 
+# All rights reserved.
 #
-#     - Federica Di Lauro:
-#         https://github.com/fdila/rosserial_stm32f7/blob/master/src/rosserial_stm32f7/make_libraries.py
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
 #
-#     - Xavier Jannin:
-#         this version...
+#  * Redistributions of source code must retain the above copyright 
+#    notice, this list of conditions and the following disclaimer.
+#  * Redistributions in binary form must reproduce the above
+#    copyright notice, this list of conditions and the following
+#    disclaimer in the documentation and/or other materials provided
+#    with the distribution.
+#  * Neither the name of Willow Garage, Inc. nor the names of its
+#    contributors may be used to endorse or promote products derived
+#    from this software without specific prior written permission.
 #
-#######################################################################################################################
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+# FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+# COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+# INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+# BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+# ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
 
-
-THIS_PACKAGE = "rosserial_stm32f4"
+THIS_PACKAGE = "rosserial_stm32"
 
 __usage__ = """
-make_libraries.py generates the STM32 rosserial library files for STM32CubeIDE.
-It requires the location of your STM32CubeIDE project folder.
+make_libraries.py generates the STM32 rosserial library files for SW4STM32.
+It requires the location of your SWSTM32 project folder.
 
-rosrun rosserial_stm32f4 make_libraries.py <output_path>
+rosrun rosserial_stm32 make_libraries.py <output_path>
 """
 
-# ROS:
-import rospkg, rosserial_client
+import rospkg
+import rosserial_client
 from rosserial_client.make_library import *
 
-# To move files:
-import os, shutil
-
+# for copying files
+import shutil
 
 ROS_TO_EMBEDDED_TYPES = {
     'bool'    :   ('bool',              1, PrimitiveDataType, []),
@@ -47,56 +62,33 @@ ROS_TO_EMBEDDED_TYPES = {
     'int64'   :   ('int64_t',           8, PrimitiveDataType, []),
     'uint64'  :   ('uint64_t',          8, PrimitiveDataType, []),
     'float32' :   ('float',             4, PrimitiveDataType, []),
-    'float64' :   ('float',             4, AVR_Float64DataType, []),
+    'float64' :   ('double',            8, PrimitiveDataType, []),
     'time'    :   ('ros::Time',         8, TimeDataType, ['ros/time']),
     'duration':   ('ros::Duration',     8, TimeDataType, ['ros/duration']),
     'string'  :   ('char*',             0, StringDataType, []),
     'Header'  :   ('std_msgs::Header',  0, MessageDataType, ['std_msgs/Header'])
 }
 
-
-# Verif params:
+# need correct inputs
 if (len(sys.argv) < 2):
-    print __usage__
+    print(__usage__)
     exit()
-
-
-## Prepare folder ##
-
-# Get path:
+    
+# get output path
 path = sys.argv[1]
-if path[-1] == "/": path = path[0:-1]
-print "\nExporting to %s" % path
+if path[-1] == "/":
+    path = path[0:-1]
+print(("\nExporting to %s" % path))
 
-# Delete folder if it already exists:
-if os.path.exists(path + "/Inc/ros_lib/"):
-    print("Delete old folder:", path + "/Inc/ros_lib/")
-    shutil.rmtree(path + "/Inc/ros_lib/")
-
-# Create folder:
-os.makedirs(path+"/Inc/ros_lib/")
-
-
-## Copy ros_lib to destination ##
 rospack = rospkg.RosPack()
 
-# Get ros_lib path:
-ros_lib_dir = rospack.get_path(THIS_PACKAGE) + "/ros_lib/"
-
-# Copy ros_lib's files in the folder:
-files = os.listdir(ros_lib_dir)
+# copy ros_lib stuff in
+rosserial_stm32_dir = rospack.get_path(THIS_PACKAGE)
+files = os.listdir(rosserial_stm32_dir+"/src/ros_lib")
 for f in files:
-    if os.path.isfile(ros_lib_dir + f):
-        shutil.copy(ros_lib_dir + f, path + "/Inc/ros_lib/")
-rosserial_client_copy_files(rospack, path + "/Inc/ros_lib/")
+  if os.path.isfile(rosserial_stm32_dir+"/src/ros_lib/"+f):
+    shutil.copy(rosserial_stm32_dir+"/src/ros_lib/"+f, path+"/Inc/")
+rosserial_client_copy_files(rospack, path+"/Inc/")
 
-# Generate messages:
-rosserial_generate(rospack, path + "/Inc/ros_lib/", ROS_TO_EMBEDDED_TYPES)
-
-
-# Move '*.cpp' files in 'Src/' folder:
-sourcefiles = os.listdir(path+"/Inc/ros_lib/")
-for file in sourcefiles:
-    if file.endswith('.cpp'):
-        shutil.move(os.path.join(path + "/Inc/ros_lib/", file),
-                    os.path.join(path + "/Src/", file))
+# generate messages
+rosserial_generate(rospack, path+"/Inc/", ROS_TO_EMBEDDED_TYPES)
